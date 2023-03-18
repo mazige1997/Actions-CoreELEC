@@ -23,8 +23,6 @@ env:
   REPO_URL: https://github.com/CoreELEC/CoreELEC
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
-  DEVICE_NAME: CoreELEC-Amlogic-ng.arm-20.1-Nexus-CM311-1a-
-  FILE_DATE: _$(date +"%Y%m%d%H%M")
   TZ: Asia/Shanghai
 
 jobs:
@@ -48,41 +46,12 @@ jobs:
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
 
-    - name: Clone source code
-      working-directory: /workdir
-      run: |
-        df -hT $PWD
-        git clone https://github.com/alahei/CM311-1a-CoreELEC.git CM311-1a-CoreELEC
-        ln -sf /workdir/CM311-1a-CoreELEC $GITHUB_WORKSPACE/CM311-1a-CoreELEC
-
-    - name: Build CoreELEC
-      id: compile
-      run: cd CM311-1a-CoreELEC && sed -i 's/19.5-Matrix_rc2/20.1-Nexus/g' build.sh && sh build.sh
-      
-    - name: Check space usage
-      if: (!cancelled())
-      run: df -hT
-
-    - name: Upload bin directory
-      uses: actions/upload-artifact@main
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
-      with:
-        path: CM311-1a-CoreELEC/
-
-    - name: Organize files
-      id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
-      run: |
-        cd CM311-1a-CoreELEC/
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-        echo "::set-output name=status::success"
-
-    - name: Upload firmware directory
-      uses: actions/upload-artifact@main
-      if: steps.organize.outputs.status == 'success' && !cancelled()
-      with:
-        name: CM311-1a-CoreELEC_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}
+    - name: SSH connection to Actions
+      uses: P3TERX/ssh2actions@v1.0.0
+      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
+      env:
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         
     - name: Delete workflow runs
       uses: GitRML/delete-workflow-runs@main
